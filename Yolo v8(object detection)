@@ -1,0 +1,95 @@
+# === Step 1: Install Required Packages ===
+!pip install ultralytics             # For YOLOv8 model training and inference
+!pip install opencv-python-headless  # OpenCV for image operations (headless for Colab)
+!pip install numpy                   # Numerical operations
+!pip install matplotlib              # Visualization
+
+# === Step 2: Import Required Libraries ===
+import os
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from ultralytics import YOLO         # Ultralytics YOLOv8 wrapper
+
+# === Step 3: Mount Google Drive ===
+from google.colab import drive
+drive.mount('/content/drive')        # Authorize access to Google Drive
+
+# === Step 4: Define Dataset Paths ===
+train_images = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/train/images/"
+train_labels = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/train/labels/"
+test_images = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/images/"
+test_labels = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/labels/"
+valid_images = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/valid/images/"
+valid_labels = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/valid/labels/"
+
+# === Step 5: Verify Dataset Structure ===
+!ls $train_images   # List training images
+!ls $train_labels   # List training labels
+!ls $test_images    # List testing images
+!ls $test_labels    # List testing labels
+!ls $valid_images   # List validation images
+!ls $valid_labels   # List validation labels
+
+# Print absolute paths to image folders (for verification)
+base_path = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer"
+print("Train Images:", os.path.abspath(os.path.join(base_path, "train/images")))
+print("Validation Images:", os.path.abspath(os.path.join(base_path, "valid/images")))
+print("Test Images:", os.path.abspath(os.path.join(base_path, "test/images")))
+
+# === Step 6: Create data.yaml for YOLO ===
+yaml_content = """
+train: /content/drive/MyDrive/Instance_Segmentation_of_ulcer/train/images
+val: /content/drive/MyDrive/Instance_Segmentation_of_ulcer/valid/images
+test: /content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/images
+
+nc: 1
+names: ['wound']
+
+roboflow:
+  workspace: instance-segmentation-using-yolo-v8-of-foot-ulcer-gyx2l
+  project: instance-segmentation-of-ulcer-g8fid
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/instance-segmentation-using-yolo-v8-of-foot-ulcer-gyx2l/instance-segmentation-of-ulcer-g8fid/dataset/1
+"""
+
+yaml_path = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/data.yaml"
+
+# Save YAML configuration to file
+with open(yaml_path, 'w') as file:
+    file.write(yaml_content)
+
+print(f"YAML file saved to: {yaml_path}")
+
+# === Step 7: Validate YAML Format ===
+import yaml
+
+# Load and validate the YAML file
+try:
+    with open(yaml_path, 'r') as file:
+        data = yaml.safe_load(file)
+    print("YAML file is valid and loaded successfully.")
+    print(data)  # Optional: Display content
+except yaml.YAMLError as e:
+    print("YAML syntax error:", e)
+
+# === Step 8: Train the YOLOv8 Model ===
+model = YOLO("yolov8n.pt")  # Load YOLOv8 nano model (object detection version)
+
+# Train the model using data.yaml
+model.train(
+    data=yaml_path,    # Path to YAML file
+    epochs=50,         # Number of training epochs
+    imgsz=640,         # Input image size
+    batch=16,          # Batch size
+    device=0           # Use GPU if available
+)
+
+# === Step 9: Check for Output Results ===
+# Look into the runs/segment folder to find experiment outputs
+segment_path = "runs/segment"
+if os.path.exists(segment_path):
+    print("Available experiment folders:", os.listdir(segment_path))
+else:
+    print("No segmentation runs found.")
