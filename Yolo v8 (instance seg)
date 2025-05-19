@@ -1,0 +1,92 @@
+# === 1. Mount Google Drive ===
+from google.colab import drive
+drive.mount('/content/drive')  # Mounts your Google Drive to access dataset and files
+
+# === 2. Define Dataset Paths ===
+# Set paths to image and label folders for training, validation, and testing
+train_images = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/train/images/"
+train_labels = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/train/labels/"
+test_images = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/images/"
+test_labels = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/labels/"
+valid_images = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/valid/images/"
+valid_labels = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer/valid/labels/"
+
+# === 3. Verify Dataset Directories ===
+# Ensures that all necessary directories exist and lists some files
+import os
+
+def verify_paths():
+    paths = [train_images, train_labels, test_images, test_labels, valid_images, valid_labels]
+    for path in paths:
+        if not os.path.exists(path):
+            print(f"❌ Path not found: {path}")
+        else:
+            print(f"✅ Found: {path}")
+            files = os.listdir(path)
+            print(f"Files: {len(files)} - Sample: {files[:3]}")
+            print("---")
+
+verify_paths()
+
+# === 4. Unzip Dataset ===
+# Unzips the dataset if not already extracted
+!unzip "/content/drive/MyDrive/Foot_Ulcer.zip" -d "/content/drive/MyDrive/Instance_Segmentation_of_ulcer"
+
+# === 5. Install YOLOv8 ===
+# Installs the Ultralytics library for YOLOv8 model support
+!pip install ultralytics
+
+# === 6. Import YOLO ===
+from ultralytics import YOLO  # Main class for training and inference
+
+# === 7. Validate YAML Configuration ===
+# Checks that the `data.yaml` file correctly points to train/val/test image folders
+import yaml
+
+def verify_data_yaml(data_yaml_path):
+    with open(data_yaml_path, 'r') as file:
+        data_yaml = yaml.safe_load(file)
+
+    for key in ['train', 'val', 'test']:
+        path = data_yaml.get(key)
+        print(f"{key.title()} Path: {path}")
+        if not os.path.exists(path):
+            print("❌ Not Found")
+        else:
+            print("✅ Exists")
+
+verify_data_yaml("/content/drive/MyDrive/Instance_Segmentation_of_ulcer/data.yaml")
+
+# === 8. Train YOLOv8 Model ===
+# Using YOLOv8n (nano) segmentation model with your custom dataset
+model = YOLO("yolov8n-seg.pt")  # Use yolov8n.pt for detection or yolov8n-seg.pt for segmentation
+model.train(
+    data="/content/drive/MyDrive/Instance_Segmentation_of_ulcer/data.yaml",  # YAML file with dataset paths
+    epochs=50  # Number of training epochs
+)
+
+# === 9. Evaluate Model ===
+# Runs evaluation on the validation set after training
+metrics = model.val()
+print(metrics)
+
+# === 10. Run Inference ===
+# Predict segmentation on test images and save results
+results = model.predict(
+    source="/content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/images/",  # Path to test images
+    save=True,  # Save predicted masks
+    conf=0.25  # Confidence threshold
+)
+
+# === 11. Visualize Predictions ===
+# Optional: Display some result images directly
+from IPython.display import Image, display
+import glob
+
+result_images = glob.glob('runs/segment/predict/*.jpg')  # Predicted image paths
+for image_path in result_images[:3]:  # Show first 3
+    display(Image(filename=image_path))
+
+# === 12. Export Model (Optional) ===
+# Save the trained model in a format of your choice
+model.export(format="onnx")  # Options: onnx, torchscript, coreml, etc.
