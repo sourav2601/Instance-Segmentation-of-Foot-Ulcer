@@ -1,0 +1,85 @@
+# === Step 1: Clone and Install Ultralytics YOLOv8 from Source ===
+!git clone https://github.com/ultralytics/ultralytics.git  # Clone the YOLOv8 repo
+%cd ultralytics
+!pip install -e .  # Install in editable mode for development
+
+# === Step 2: Mount Google Drive ===
+from google.colab import drive
+drive.mount('/content/drive')  # Mount Google Drive to access dataset
+
+# === Step 3: Explore Drive Contents ===
+!ls /content/drive/MyDrive  # Show files in your Drive
+
+# === Step 4: Create Local Dataset Directory ===
+import os
+
+ultralytics_dataset_path = "/content/ultralytics/datasets"
+os.makedirs(ultralytics_dataset_path, exist_ok=True)  # Create folder if not exists
+print("✅ datasets directory created at:", ultralytics_dataset_path)
+
+# === Step 5: Verify Dataset Location in Drive ===
+print("Foot_Ulcer.zip exists:", os.path.exists('/content/drive/MyDrive/Instance_Segmentation_of_ulcer'))
+print("Dataset directory exists:", os.path.exists('/content/ultralytics/datasets'))
+
+# === Step 6: List Dataset Files in Drive ===
+dataset_folder = "/content/drive/MyDrive/Instance_Segmentation_of_ulcer"
+print("Files in dataset folder:", os.listdir(dataset_folder))  # Check content
+
+# === Step 7: Copy Dataset to Ultralytics Folder ===
+!cp -r "/content/drive/MyDrive/Instance_Segmentation_of_ulcer" "/content/ultralytics/datasets"
+
+# Verify files copied
+print("Files in Ultralytics dataset folder:", os.listdir("/content/ultralytics/datasets"))
+
+# === Step 8: Train YOLOv8 Segmentation Model ===
+from ultralytics import YOLO
+
+model = YOLO("yolo11n-seg.pt")  # Load YOLOv11 segmentation model (custom weight assumed)
+model.train(
+    data="/content/ultralytics/datasets/Instance_Segmentation_of_ulcer/data.yaml",
+    epochs=50,
+    imgsz=640,
+    batch=16,
+    device=0  # Use GPU if available
+)
+
+# === Step 9: Locate Trained Weights ===
+for root, dirs, files in os.walk("runs"):
+    for file in files:
+        if file.endswith("best.pt"):
+            print(os.path.join(root, file))  # Print path to best model checkpoint
+
+# === Step 10: Inference with Trained Model (from Drive) ===
+from google.colab import files
+from IPython.display import Image, display
+
+model = YOLO("/content/drive/MyDrive/yolov11segmentation/yolov11_segmentation_model.pt")  # Load trained model
+
+uploaded = files.upload()  # Upload an image
+image_path = list(uploaded.keys())[0]
+
+results = model(image_path)  # Run inference
+results[0].save(filename="segmented_output.png")  # Save result
+
+display(Image("segmented_output.png"))  # Display segmented output
+
+# === Step 11: Inspect Weights Folder ===
+print(os.listdir("/content/ultralytics/runs/segment/train/weights"))
+
+# === Step 12: Validate Model Performance ===
+model = YOLO("/content/ultralytics/runs/segment/train/weights/best.pt")
+metrics = model.val()  # Run validation
+
+print("mAP 50-95 for masks:", metrics.seg.map)  # Segmentation score
+print("mAP 50-95 for bounding boxes:", metrics.box.map)  # Detection score
+
+# === Step 13: Visualize Predictions ===
+import matplotlib.pyplot as plt
+import cv2
+
+results = model("/content/ultralytics/datasets/Instance_Segmentation_of_ulcer/test/images")  # Run on test images
+for result in results:
+    result.show()  # Show results with masks
+
+# === Step 14: Predict Again on Test Folder ===
+results = model.predict(source='/content/drive/MyDrive/Instance_Segmentation_of_ulcer/test/images/')  # Re-run inference on test set
