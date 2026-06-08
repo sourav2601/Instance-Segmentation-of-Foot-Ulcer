@@ -20,9 +20,7 @@ This project aims to assist in early diagnosis of diabetic foot ulcers by detect
 - `inference.py` – Run model on new images
 - `results/` – Inference outputs and evaluation metrics
 
-## 📊 Results
-- mAP@0.5: 91.4% (YOLOv8)
-- mAP@0.5: 92.1% (YOLOv11)
+
 
 
 ## 🚀 Getting Started
